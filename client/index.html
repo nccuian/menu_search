@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>LA Foody</title>
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css?family=Righteous" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <a id="brandName" class="navbar-brand" href="#"><i class="fas fa-utensils"></i> LA Foody</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarColor02" aria-controls="navbarColor02" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarColor02">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item">
+            <a class="nav-link" target="_blank" href="https://github.com/nccuian/menu_search">Github Code <span class="sr-only">(current)</span></a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    
+    <section class="container mt-5">
+      <p class="text-info textCenter">在 Los Angeles最熱門的200間餐廳中，尋找你想吃的美食！</p>
+      <form @submit.prevent="menuSearch">
+        <div class="form-group">
+          <label class="col-form-label col-form-label-lg mb-2" for="search">搜尋：</label>
+          <input v-model="search" type="text" class="form-control form-control-lg" id="search" aria-describedby="searchHelp" placeholder="e.g. Pizza, Salads, Sandwiches">
+          <!-- <small id="searchHelp" class="form-text text-muted">請輸入要尋找的美食</small> -->
+          <div class="mt-2">
+            <span>熱門美食：</span>
+            <span v-for="(item, index) in hotList" :key="index" style="cursor: pointer"
+              @click="hotSearch(item)" class="badge badge-pill badge-info mr-3">
+              {{item}}
+            </span>
+          </div>
+        </div>
+        <div class="textCenter"><button type="sumbit" class="btn btn-info">搜尋 <i class="fas fa-search"></i></button></div>
+      </form>  
+    </section>
+    <section>
+      <hr>
+      <div class="container">
+        <div class="mb-4" v-for="item in items" :key="item.id">
+          <div>
+            <a target="_blank" :href="`https://www.allmenus.com/${restaurants[item.restaurant_id].link}`"><h4 class="inline-h4 mr-5">{{item.name}}</h4></a>
+            <h4 class="inline-h4" v-if="item.offers && item.offers.length">
+              <span><i class="fas fa-dollar-sign text-info"></i></span> {{item.offers[0].Price}} {{item.offers[0].priceCurrency}}
+            </h4>
+            <h4 class="inline-h4" v-if="!item.offers">
+              <p class="text-danger">無價錢資訊</p>
+            </h4>
+          </div>
+          <dl v-if="item.description">
+            <dl>{{item.description}}</dl>
+          </dl>
+          <div>
+            <a target="_blank" :href="`https://www.allmenus.com/${restaurants[item.restaurant_id].link}`"><small class="mr-5"><i class="fas fa-home text-info"></i> {{restaurants[item.restaurant_id].name}}</small></a>
+            <small><span class="text-info">地址： </span>{{restaurants[item.restaurant_id].address}}</small>
+          </div>
+          <hr>
+        </div>
+      </div>
+    </section>
+
+    <div class="container">
+      <div class="alert alert-dismissible alert-danger" v-if="open">
+        <button @click="open = false" type="button" class="close" data-dismiss="alert">&times;</button>
+        <strong class="mb-4">Oops!</strong>
+        <p>很抱歉，找不到您要查詢的食物，可以試看看以下 <strong>Top5</strong>熱門美食！</p>
+        <div>
+          <span v-for="(item,index) in hotList" :key="index" style="cursor: pointer"
+            @click="hotSearch(item)" class="badge badge-danger mr-3">
+            {{item}}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+
+<script src="https://www.gstatic.com/firebasejs/5.5.2/firebase.js"></script>
+<script>
+  // Initialize Firebase
+  var config = {
+    apiKey: "AIzaSyBE-af-mUb5dAZgPHrpW24umM-I5ne4dWw",
+    authDomain: "menu-search-79bd9.firebaseapp.com",
+    databaseURL: "https://menu-search-79bd9.firebaseio.com",
+    projectId: "menu-search-79bd9",
+    storageBucket: "menu-search-79bd9.appspot.com",
+    messagingSenderId: "72914193083"
+  };
+  firebase.initializeApp(config);
+  var db = firebase.firestore();
+  db.settings({
+    timestampsInSnapshots: true
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.min.js"></script>
+<script>
+  var vm = new Vue({
+    el: '#app',
+    data() {
+      return {
+        search: '',
+        items: [],
+        restaurants: {},
+        hotList: ['Pizza','Salads','Tacos','Sandwiches', 'Sushi'],
+        open: false
+      }
+    },
+    methods: {
+      menuSearch() {
+        console.log(this.search)
+        this.items = [];
+        db.collection('menu_items').where('menu_section_name', '==', this.search).get()
+          .then((querySnapshot) => {
+            const items = [];
+            querySnapshot.forEach((doc) => {
+                const item = doc.data();
+                item.id = doc.id;
+                items.push(item);
+            });
+            if(items.length) {
+              this.items = items;
+              this.open = false;
+            }
+            else this.open = true;
+          });
+      },
+      hotSearch(item) {
+        this.search = item;
+        this.menuSearch();
+      }
+    },
+    mounted() {
+      db.collection('restaurants').get()
+        .then((querySnapshot) => {
+          const restaurants = {};
+          querySnapshot.forEach((doc) => {
+              const restaurant = doc.data();
+              restaurants[restaurant.id] = restaurant
+          });
+          this.restaurants = restaurants;
+        });
+    },
+    watch: {
+      search: function(val) {
+        this.search = val.toLowerCase().replace(/\b[a-z]/g,function(s){return s.toUpperCase();});
+      }
+    }
+  })
+</script>
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js" integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T" crossorigin="anonymous"></script>
+
+<style>
+  @import url(https://bootswatch.com/4/lux/bootstrap.min.css);
+  #brandName {
+    text-transform: none;
+    font-family: 'Righteous', cursive;
+    font-size: 1.5rem;
+  }
+  .textCenter {
+    text-align: center;
+  }
+  .inline-h4 {
+    display: inline-block;
+  }
+</style>
